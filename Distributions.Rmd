@@ -1,0 +1,172 @@
+---
+title: "Bayesian Reliability Analysis"
+runtime: shiny
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    css: custom.css
+---
+
+# Overview of Bayesian Reliability Analysis
+
+Bayesian statistical methods 
+flow chart picture
+
+# Types of Analysis
+
+Understanding the question of interest and organizing all relevant information is the key first step in any Bayesian statistical anyalysis.  
+
+Reliability problems have a few common forms.
+
+<div data-role="collapsible" data-collapsible = "true">
+## Pass/Fail
+
+data with binary outcomes = binomial likelihood
+</div>
+## Time to Failure
+
+data that can take positive real number outcomes = exponential likelihood
+
+# Building Prior
+
+## Uninformative
+
+## Informative
+
+## Distributions
+
+### Beta
+
+
+$$ f(x|\alpha, \beta) \propto x^{\alpha - 1} (1-x)^{\beta -1} $$ 
+```{r, echo = FALSE}
+library(shiny)
+library(ggplot2)
+shinyApp(
+  
+  ui = shinyUI(fluidPage(
+  
+  column(12,
+         ""),
+  
+  sidebarLayout(
+    sidebarPanel(
+    
+      sliderInput("a", 
+                  "Alpha:", 
+                  value = 1,
+                  min = .01, 
+                  max = 10),
+      sliderInput("b", 
+                  "Beta:", 
+                  value = 1,
+                  min = 0.01, 
+                  max = 10)
+    ),
+    mainPanel(
+        plotOutput('plot1'),
+        textOutput("summary")
+    )
+  )
+)),
+  
+  server = function(input, output) {
+  
+  data1 <- reactiveValues()
+  
+  plot <- function(a,b){
+    x <- seq(0.01,0.99,0.01)
+    betaD <- dbeta(x,a,b)
+
+    data1$beta <- data.frame(cbind(x, betaD))
+    
+    ggplot(data1$beta, aes(x=x, y=betaD)) + geom_line(colour="#CC0000") + ylab("Density")
+    
+  }  
+  
+  output$plot1 <- renderPlot({
+    plot(input$a,input$b)
+  })
+  
+  output$summary <- renderPrint({
+    m <- input$a / (input$a + input$b)
+    paste("Mean:", m)
+
+  })
+
+},
+     options = list(height = 600)
+)
+```
+
+
+### Gamma
+
+
+$$ f(x|\alpha, \beta) \propto x^{\alpha - 1} e^{-\beta x} $$ 
+
+```{r, echo = FALSE}
+library(shiny)
+library(ggplot2)
+shinyApp(
+  
+  ui = shinyUI(fluidPage(
+  
+  column(12,
+         ""),
+  
+  sidebarLayout(
+    sidebarPanel(
+    
+      sliderInput("a", 
+                  "Alpha:", 
+                  value = 5,
+                  min = .01, 
+                  max = 10),
+      sliderInput("b", 
+                  "Beta:", 
+                  value = 5,
+                  min = 0.01, 
+                  max = 10)
+    ),
+    mainPanel(
+        plotOutput('plot1'),
+        textOutput("summary")
+    )
+  )
+)),
+  
+  server = function(input, output) {
+  
+  plot <- function(a,b){
+    x <- seq(0, 10, 0.01)
+    gammaD <- dgamma(x,a,b)
+
+    d <- data.frame(cbind(x, gammaD))
+    
+    ggplot(d, aes(x=x, y=gammaD)) + geom_line(colour="#CC0000") + ylab("Density") +  coord_cartesian(xlim = c(0, 10)) + theme(axis.text.x = element_text(colour = "blue", size = 15, face = "italic"))
+    
+  }  
+  
+  output$plot1 <- renderPlot({
+    plot(input$a,input$b)
+  })
+  
+  output$summary <- renderPrint({
+    m <- input$a / input$b
+    paste("Mean:", m)
+
+  })
+},
+  
+  options = list(height = 600)
+)
+```
+
+
+# Likelihood/Data
+
+# Posterior/Results
+
+# Examples
