@@ -6,38 +6,6 @@ library(markdown)
 
 server <- function(input, output) {
   
-#   ### Saving data:
-#   Rawdata <- reactive({
-#     input$refresh 
-#     input$refresh2 
-#     
-#     slope <- input$slope
-#     SD <- input$SD
-#     sample <- input$sample
-#     x <- round(1:sample + rnorm(n = sample, mean = 1, sd = 2), digits = 2)
-#     y <- round(slope * (x) + rnorm(n = sample, mean = 3, sd = SD ), digits = 2)
-#     mod <- lm(y ~ x, data.frame(y,x))
-#     ypred <- predict(mod)
-#     Rawdata <- data.frame(y, x, ypred)
-#   })
-#   
-#   SSdata <- reactive({
-#     dat <- Rawdata()
-#     Y <- mean(dat$y)
-#     mod <- lm(y ~ x, dat)
-#     ypred <- predict(mod)
-#     dat$ypred <- ypred
-#     SST <- sum((dat$y - Y)^2)
-#     SSE <- round(sum((dat$y - ypred)^2), digits = 5)
-#     SSA <- SST - SSE
-#     
-#     SSQ <- data.frame(SS = c("Total","Regression","Error"),
-#                       value = as.numeric(c(SST, SSA, SSE)/SST)*100)
-#     SSQ$SS <- factor(SSQ$SS, as.character(SSQ$SS))
-#     SSdata <- data.frame(SS = factor(SSQ$SS, as.character(SSQ$SS)),
-#                          value = as.numeric(c(SST, SSA, SSE)/SST)*100)
-#     
-#   })
   set.seed(2558)
   
   data1 <- reactiveValues()
@@ -152,15 +120,38 @@ server <- function(input, output) {
                    cbind(lamda[lower:upper], posterior[lower:upper]),
                    c(qs[2], 0))
     
-    shade  <- as.data.frame(shade)
+    shade <- rbind(shade,
+                   matrix(c(rep(0, (length(lamda)*3 - length(shade[,1]))), rep(0,(length(lamda)*3 - length(shade[,1])))), ncol = 2))
     
-    ggplot() + xlim(xlim) + ylim(ylim) +
-      geom_line(aes(lamda, prior), colour = "#E69F00") + 
-      geom_line(aes(lamda, likelihood), colour = "#56B4E9") +
-      geom_line(aes(lamda, posterior), colour = "#009E73") +
-      geom_segment(aes(x=qs[1],y=0,xend=qs[1],yend=ytopl), col = "green") + 
-      geom_segment(aes(x=qs[2],y=0,xend=qs[2],yend=ytopu), col = "green") +
-      geom_polygon(aes(shade[,1], shade[,2]), fill="green", alpha = 0.1)
+
+    shade  <- as.data.frame(shade)
+
+    d <- as.data.frame(cbind(lamda, posterior, likelihood, prior))
+
+    d2 <- melt(d, id="lamda")
+
+    ggplot(d2, aes(lamda, value, colour=variable)) + 
+      xlim(xlim) + ylim(ylim) +
+      geom_line() +
+      scale_colour_manual(values=c("black", "blue", "red"),
+                          guide = guide_legend(title = NULL)) +
+      geom_segment(aes(x=qs[1],y=0,xend=qs[1],yend=ytopl), col = "black") +
+      geom_segment(aes(x=qs[2],y=0,xend=qs[2],yend=ytopu), col = "black") +
+      geom_polygon(aes(shade[,1], shade[,2]), fill="black", alpha = 0.1)
+
+#       geom_segment(aes(x=qs[1],y=0,xend=qs[1],yend=ytopl), col = "green") + 
+#       geom_segment(aes(x=qs[2],y=0,xend=qs[2],yend=ytopu), col = "green") +
+#       geom_polygon(aes(shade[,1], shade[,2]), fill="green", alpha = 0.1)
+    
+#     ggplot(d) + xlim(xlim) + ylim(ylim) +
+#       geom_line(aes(lamda, prior, colour = "Prior"), colour = "yellow3") + 
+#       geom_line(aes(lamda, likelihood), colour = "blue") +
+#       geom_line(aes(lamda, posterior), colour = "green4") +
+#       geom_segment(aes(x=qs[1],y=0,xend=qs[1],yend=ytopl), col = "green") + 
+#       geom_segment(aes(x=qs[2],y=0,xend=qs[2],yend=ytopu), col = "green") +
+#       geom_polygon(aes(shade[,1], shade[,2]), fill="green", alpha = 0.1) + 
+#       scale_color_manual(values=c("prior"="yellow3", "likelihood"="blue",
+#                                   "posterior"="green4"))
     
   }  
   
