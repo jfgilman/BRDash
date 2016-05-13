@@ -2,6 +2,8 @@ library(shiny)
 library(ggplot2)
 library(shinydashboard)
 library(markdown)
+library(reshape2)
+library(dplyr)
 
 
 server <- function(input, output) {
@@ -14,16 +16,20 @@ server <- function(input, output) {
   data1$qsl <- 0
   data1$qsu <- 0
   
+  data2 <- reactiveValues()
+  data2$option <- 1
+  data2$s <- 0
+  data2$qsl <- 0
+  data2$qsu <- 0
+  
   p <- reactive({
     ab <- switch(input$prior,
-                 one = c(.001,.001),
-                 half = c(.5,.5),
-                 five = c(5,5),
+                 NI = c(.001,.001),
+                 five = c(3,3),
                  ten = c(10,10),
                  pfivefive = c(.5,5))
     ab
   })
-  
   
   output$CD_choice <- renderUI({
     if (input$CD_choice == "Upload Data"){
@@ -53,6 +59,35 @@ server <- function(input, output) {
       )}
   })
   
+  output$CD_choice2 <- renderUI({
+    if (input$CD_choice2 == "Upload Data"){
+      data2$option <- 2
+      fluidRow(
+               fileInput('file2', 'Dataset',
+                         accept=c('text/csv','text/comma-separated-values',
+                                  'text/tab-separated-values',
+                                  'text/plain',
+                                  'csv',
+                                  'tsv')),
+               dataTableOutput('preview2')
+      )
+      
+    } else if(input$CD_choice2 == "Input Summary"){
+      data2$option <- 1
+      fluidRow(sliderInput("n", 
+                          "Number of observations:", 
+                          value = 10,
+                          min = 1, 
+                          max = 50),
+              sliderInput("s", 
+                          "Number of Successes:", 
+                          value = 2,
+                          min = 0, 
+                          max = 50)
+      )}
+  })
+  
+  
   
   output$preview1 <- renderDataTable({
     
@@ -78,7 +113,19 @@ server <- function(input, output) {
   }, options = list(pageLength = 5, searching = FALSE, 
                     lengthChange = FALSE))
   
-  
+  output$preview2 <- renderDataTable({
+    
+    inFile <- input$file2
+    
+    if (is.null(inFile))
+      return(NULL)
+    
+    data2$csv <- read.csv(inFile$datapath,header=T)
+    
+    data2$csv
+    
+  }, options = list(pageLength = 5, searching = FALSE, 
+                    lengthChange = FALSE))
   
   
   plots <- function(a,b,m,n){
@@ -90,17 +137,15 @@ server <- function(input, output) {
     
     posterior <- dgamma(lamda,((a+n)),((b+n*(m))))
     
-    
-    
     qs <- c(qgamma(.025,((a+n)),((b+n*(m)))), qgamma(.975,((a+n)),((b+n*(m)))))
     s <- (a+n)/(b+n*(m))
     
     ytopl <- dgamma(qs[1],((a+n)),((b+n*(m))))
     ytopu <- dgamma(qs[2],((a+n)),((b+n*(m))))
     
-    data1$qsl <- round(qs[1], digits = 4)
-    data1$qsu <- round(qs[2], digits = 4)
-    data1$s <- round(s, digits = 4)
+    data1$qsl <- round(qs[1], digits = 3)
+    data1$qsu <- round(qs[2], digits = 3)
+    data1$s <- round(s, digits = 3)
     
     
     xll <- function(w){
@@ -129,32 +174,23 @@ server <- function(input, output) {
     d <- as.data.frame(cbind(lamda, posterior, likelihood, prior))
 
     d2 <- melt(d, id="lamda")
-
-    ggplot(d2, aes(lamda, value, colour=variable)) + 
-      xlim(xlim) + ylim(ylim) +
-      geom_line() +
-      scale_colour_manual(values=c("black", "blue", "red"),
-                          guide = guide_legend(title = NULL)) +
-      geom_segment(aes(x=qs[1],y=0,xend=qs[1],yend=ytopl), col = "black") +
-      geom_segment(aes(x=qs[2],y=0,xend=qs[2],yend=ytopu), col = "black") +
-      geom_polygon(aes(shade[,1], shade[,2]), fill="black", alpha = 0.1)
-
-#       geom_segment(aes(x=qs[1],y=0,xend=qs[1],yend=ytopl), col = "green") + 
-#       geom_segment(aes(x=qs[2],y=0,xend=qs[2],yend=ytopu), col = "green") +
-#       geom_polygon(aes(shade[,1], shade[,2]), fill="green", alpha = 0.1)
     
-#     ggplot(d) + xlim(xlim) + ylim(ylim) +
-#       geom_line(aes(lamda, prior, colour = "Prior"), colour = "yellow3") + 
-#       geom_line(aes(lamda, likelihood), colour = "blue") +
-#       geom_line(aes(lamda, posterior), colour = "green4") +
-#       geom_segment(aes(x=qs[1],y=0,xend=qs[1],yend=ytopl), col = "green") + 
-#       geom_segment(aes(x=qs[2],y=0,xend=qs[2],yend=ytopu), col = "green") +
-#       geom_polygon(aes(shade[,1], shade[,2]), fill="green", alpha = 0.1) + 
-#       scale_color_manual(values=c("prior"="yellow3", "likelihood"="blue",
-#                                   "posterior"="green4"))
+    pp <- ggplot(d2, aes(lamda, value, colour=variable))  
+    pp <- pp + xlim(xlim) + ylim(ylim) 
+    pp <- pp + geom_line() 
+    pp <- pp + scale_colour_manual(values=c("black", "blue", "red"),
+                                   guide = guide_legend(title = NULL))
+    if(input$CI){
+      pp <- pp + geom_segment(aes(x=qs[1],y=0,xend=qs[1],yend=ytopl), col = "black") 
+      pp <- pp + geom_segment(aes(x=qs[2],y=0,xend=qs[2],yend=ytopu), col = "black") 
+      pp <- pp + geom_polygon(aes(shade[,1], shade[,2]), fill="black", alpha = 0.1)
+    }
+    
+    pp
     
   }  
   
+  # running the plot for censored - non-conjugate 
   cplots <- function(a, b, data){
     
     m <- mean(data[,1])
@@ -211,7 +247,6 @@ server <- function(input, output) {
     }
     return(val)
   }
-  
   
   output$plot1 <- renderPlot({
     
@@ -281,12 +316,7 @@ server <- function(input, output) {
     
     ggplot() + xlim(xlim) + ylim(ylim) +
       geom_line(aes(l, lifedist), colour = "red2") 
-    
-    
-    #     plot(0,0,type="n",xlab="Lifetime",ylab="",ylim=ylim,xlim=xlim)
-    #     lines(l,lifedist,col=2)
-    
-    
+  
     #     if(data1$option == 1){
     #       m = input$m
     #       n = input$n
@@ -342,52 +372,85 @@ server <- function(input, output) {
     stan <- integrate(xbin,0,1)
     likelihood<-likelihood/stan[[1]]
     
-    
     ylim<-c(0,max(prior))
     ylim<-c(0,max(c(prior,likelihood,posterior)))
     
-    plot(theta,prior,type="l",col=2,lty=2,xlab="theta",ylab="",ylim=ylim)
-    lines(theta,likelihood,col=3, lty=3)
-    lines(theta,posterior,col=1,lwd=2, lty=1)
-    legend("topright",c("prior","likelihood","posterior"),
-           lty=c(2,3,1),col=c(2,3,1),lwd=c(1,1,2),inset=0.01,cex=1.2)
+    qs <- c(qbeta(.025,a+y,n-y+b), qbeta(.975,a+y,n-y+b))
+    
+    s <- (y+a)/(y+a+n-y+b)
+    data2$qsl <- round(qs[1], digits = 3)
+    data2$qsu <- round(qs[2], digits = 3)
+    data2$s <- round(s, digits = 3)
+    
+    ytopl <- dbeta(qs[1],a+y,n-y+b)
+    ytopu <- dbeta(qs[2],a+y,n-y+b)
+    
+    lower <- min(which(theta>qs[1]))
+    upper <- max(which(theta<qs[2]))
+    
+    shade <- rbind(c(qs[1],0),
+                   cbind(theta[lower:upper], posterior[lower:upper]),
+                   c(qs[2], 0))
+    
+    shade <- rbind(shade,
+                   matrix(c(rep(0, (length(theta)*3 - length(shade[,1]))), rep(0,(length(theta)*3 - length(shade[,1])))), ncol = 2))
+    
+    
+    shade  <- as.data.frame(shade)
+    
+    d <- as.data.frame(cbind(theta, posterior, likelihood, prior))
+    
+    d2 <- melt(d, id="theta")
+    
+    pp <- ggplot(d2, aes(theta, value, colour=variable))  
+    pp <- pp + ylim(ylim) 
+    pp <- pp + geom_line() 
+    pp <- pp + scale_colour_manual(values=c("black", "blue", "red"),
+                          guide = guide_legend(title = NULL))
+    if(input$CI2){
+      pp <- pp + geom_segment(aes(x=qs[1],y=0,xend=qs[1],yend=ytopl), col = "black") 
+      pp <- pp + geom_segment(aes(x=qs[2],y=0,xend=qs[2],yend=ytopu), col = "black") 
+      pp <- pp + geom_polygon(aes(shade[,1], shade[,2]), fill="black", alpha = 0.1)
+    }
+    
+    pp
   }  
   
-  postSum <- function(a,b,n,y){
-    
-    A    <- y+a
-    B    <- n-y+b 
-    Mean <- A/(A+B)
-    Var  <- A*B/((A+B)*(A+B)*(A+B+1))
-    Q05  <- qbeta(0.05,A,B)
-    Q95  <- qbeta(0.95,A,B)
-    #P50  <- pbeta(0.50,A,B)
-    
-    output <- cbind(Mean,Q05,Q95)
-    output <- round(output,2)
-    
-    return(output)
-  }  
+  output$m2 <- renderText({
+    paste("Posterior Mean: ", data2$s)
+  })
+  output$qsl2 <- renderText({
+    paste("95% Credible Interval lower: ",data2$qsl)
+  })
+  output$qsu2 <- renderText({
+    paste("95% Credible Interval Upper: ",data2$qsu)
+  })
   
   output$plot3 <- renderPlot({
     
     a = p2()[1]
     b = p2()[2]
-    n = input$n
-    y = input$s
+
     
-    plots2(a,b,n,y)
+    if(data2$option == 1){
+      n = input$n
+      y = input$s
+      
+      if(is.na(y)){
+        
+      }else{
+        plots2(a,b,n,y)
+      }
+      
+    }else if(data2$option == 2){
+
+        y = sum(data2$csv[,1])
+        n = length(data2$csv[,1])
+        
+        if(is.na(y)){
+        }else{
+          plots2(a,b,n,y)
+        }
+    }
   })
-  
-  output$summary <- renderPrint({
-    
-    a = p2()[1]
-    b = p2()[2]
-    n = input$n
-    y = input$s
-    
-    postSum(a,b,n,y)
-  })
-  
-  
 }

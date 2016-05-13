@@ -46,132 +46,13 @@ The next step is organizing any prior information or knowledge you have about th
 
 The graphs of these functions are the primary way we will visualize our prior beliefs and our updated beliefs about the variable of interest.  Using these mini apps you can see how the parameters change the graph of the distributions.  Using the mean and variance formulas you should be able to manipulate alpha and beta parameters to achieve a distribution with the center and amount of spread you want.
 
-### Beta
+<br>
+![alt text](beta.png)
+<br>
 
-$$ f(x|\alpha, \beta) \propto x^{\alpha - 1} (1-x)^{\beta -1} $$ 
-```{r, echo = FALSE, warning=FALSE}
-library(shiny)
-library(ggplot2)
-shinyApp(
-  
-  ui = shinyUI(fluidPage(
-  
-  column(12,
-         ""),
-  
-  sidebarLayout(
-    sidebarPanel(
-    
-      sliderInput("a", 
-                  "Alpha:", 
-                  value = 1,
-                  min = .01, 
-                  max = 10),
-      sliderInput("b", 
-                  "Beta:", 
-                  value = 1,
-                  min = 0.01, 
-                  max = 10)
-    ),
-    mainPanel(
-        plotOutput('plot1'),
-        textOutput("summary")
-    )
-  )
-)),
-  
-  server = function(input, output) {
-  
-  data1 <- reactiveValues()
-  
-  plot <- function(a,b){
-    x <- seq(0.01,0.99,0.01)
-    betaD <- dbeta(x,a,b)
-
-    data1$beta <- data.frame(cbind(x, betaD))
-    
-    ggplot(data1$beta, aes(x=x, y=betaD)) + geom_line(colour="#CC0000") + ylab("Density")
-    
-  }  
-  
-  output$plot1 <- renderPlot({
-    plot(input$a,input$b)
-  })
-  
-  output$summary <- renderPrint({
-    m <- input$a / (input$a + input$b)
-    paste("Mean:", m)
-
-  })
-
-},
-     options = list(height = 600)
-)
-```
-
-
-### Gamma
-
-
-$$ f(x|\alpha, \beta) \propto x^{\alpha - 1} e^{-\beta x} $$ 
-
-```{r, echo = FALSE, warning=FALSE}
-library(shiny)
-library(ggplot2)
-shinyApp(
-  
-  ui = shinyUI(fluidPage(
-  
-  column(12,
-         ""),
-  
-  sidebarLayout(
-    sidebarPanel(
-    
-      sliderInput("a", 
-                  "Alpha:", 
-                  value = 5,
-                  min = .01, 
-                  max = 10),
-      sliderInput("b", 
-                  "Beta:", 
-                  value = 5,
-                  min = 0.01, 
-                  max = 10)
-    ),
-    mainPanel(
-        plotOutput('plot1'),
-        textOutput("summary")
-    )
-  )
-)),
-  
-  server = function(input, output) {
-  
-  plot <- function(a,b){
-    x <- seq(0, 10, 0.01)
-    gammaD <- dgamma(x,a,b)
-
-    d <- data.frame(cbind(x, gammaD))
-    
-    ggplot(d, aes(x=x, y=gammaD)) + geom_line(colour="#CC0000") + ylab("Density") +  coord_cartesian(xlim = c(0, 10)) + theme(axis.text.x = element_text(colour = "blue", size = 15, face = "italic"))
-    
-  }  
-  
-  output$plot1 <- renderPlot({
-    plot(input$a,input$b)
-  })
-  
-  output$summary <- renderPrint({
-    m <- input$a / input$b
-    paste("Mean:", m)
-
-  })
-},
-  
-  options = list(height = 600)
-)
-```
+<br>
+![alt text](gamma.png)
+<br>
 
 
 ## Noninformative
